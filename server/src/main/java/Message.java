@@ -38,15 +38,8 @@ public class Message {
         return recipientId;
     }
 
-    public void setRecipientId(String recipientId) {
-        this.recipientId = recipientId;
-    }
-
     public String getContent() {
         return content;
     }
 
-    public void setContent(String content) {
-        this.content = content;
-    }
 }

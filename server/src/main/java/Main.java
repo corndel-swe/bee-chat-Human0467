@@ -2,8 +2,8 @@ import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Main {
 
@@ -16,14 +16,16 @@ public class Main {
             );
         });
 
-        List<WsContext> CurrentConnectedUsers = new ArrayList<>();
+        Map<String, WsContext> currentConnectedUsers = new HashMap<>();
+        Session session = new Session();
 
         app.ws("/", wsConfig -> {
 
             wsConfig.onConnect((connectContext) -> {
-                System.out.println("Connected: " + connectContext.sessionId());
-                CurrentConnectedUsers.add(connectContext);
-                System.out.println(CurrentConnectedUsers.size());
+                User user = new User(connectContext);
+                session.addUser(user);
+                System.out.println("Connected: " + user.getId());
+                System.out.println(session.numberOfCurrentConnections());
             });
 
             wsConfig.onMessage((messageContext) -> {
@@ -31,16 +33,20 @@ public class Main {
 
                 Message message = new Message(messageContext);
                 if(message.sentToAllUsers()){
-                    for (WsContext connectedUser : CurrentConnectedUsers) {
-                        connectedUser.send(message.mapMessage());
-                    }
+                    session.sendToAll(message);
+                } else {
+                    session.sendToUser(message);
+                    String recipient = message.getRecipientId();
+                    WsContext user = currentConnectedUsers.get(recipient);
+                    user.send(message.mapMessage());
                 }
             });
 
             wsConfig.onClose((closeContext) -> {
                 System.out.println("Closed: " + closeContext.sessionId());
-                CurrentConnectedUsers.remove(closeContext);
-                System.out.println(CurrentConnectedUsers.size());
+                User user = new User(closeContext);
+                session.removeUser(user);
+                System.out.println(currentConnectedUsers.size());
             });
 
             wsConfig.onError((errorContext) -> {
